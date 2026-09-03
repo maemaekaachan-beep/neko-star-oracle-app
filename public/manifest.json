@@ -4,8 +4,8 @@
   "description": "星々が語る、今のあなたへのメッセージ",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1a3c",
-  "theme_color": "#0f1a3c",
+  "background_color": "＃0b1330",
+  "theme_color": "#0b1330",
   "icons": [
     {
       "src": "/icon-192.png",
