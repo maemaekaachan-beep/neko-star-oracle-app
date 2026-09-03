@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>星読み猫オラクル</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#0b1330">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Shippori+Mincho:wght@400;600;800&display=swap');
+
+  :root{
+    --bg:#0b1330;
+    --bg-deep:#070c22;
+    --card-bg:#161f47;
+    --ink:#eef0fb;
+    --ink-soft:#9aa3c9;
+    --gold:#d4af6a;
+    --gold-deep:#b58f45;
+    --star:#f5eccb;
+    --line:#3a4a80;
+    --shadow:rgba(5,8,25,0.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{overflow-x:hidden;}
+  body{
+    background:
+      radial-gradient(ellipse at 15% 0%, rgba(212,175,106,0.08) 0%, transparent 45%),
+      radial-gradient(ellipse at 90% 100%, rgba(212,175,106,0.06) 0%, transparent 50%),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:'Zen Maru Gothic',sans-serif;
+    min-height:100vh;
+    position:relative;
+  }
+  /* 星屑の質感 */
+  body::before{
+    content:'';
+    position:fixed;inset:0;
+    background-image:radial-gradient(rgba(245,236,203,0.35) 1px, transparent 1px);
+    background-size:60px 60px;
+    pointer-events:none;
+    z-index:0;
+    opacity:0.5;
+  }
+  .container{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:22px 16px 70px;}
+
+  header{text-align:center;padding:18px 0 22px;}
+  .star-icon{font-size:34px;display:block;margin-bottom:6px;}
+  h1{
+    font-family:'Shippori Mincho',serif;font-weight:800;
+    font-size:clamp(24px,6.5vw,32px);
+    color:var(--gold);
+    letter-spacing:0.1em;
+    margin-bottom:6px;
+    text-shadow:0 0 18px rgba(212,175,106,0.35);
+  }
+  .tagline{font-size:12.5px;color:var(--ink-soft);letter-spacing:0.12em;}
+  .kanji-divider{display:flex;align-items:center;gap:10px;margin:18px 0 20px;}
+  .kanji-divider .ln{flex:1;height:1px;background:var(--line);}
+  .kanji-divider span{font-size:11px;color:var(--ink-soft);letter-spacing:0.2em;}
+
+  /* タブ */
+  .tabs{display:flex;gap:8px;margin-bottom:20px;background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:14px;padding:4px;}
+  .tab{
+    flex:1;text-align:center;padding:10px 6px;border-radius:11px;
+    font-size:13.5px;font-weight:700;color:var(--ink-soft);
+    cursor:pointer;transition:all 0.25s;letter-spacing:0.05em;
+  }
+  .tab.active{background:var(--gold);color:var(--bg-deep);box-shadow:0 3px 10px var(--shadow);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .step{background:var(--card-bg);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px var(--shadow);}
+  .step-label{font-size:12px;color:var(--gold);letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;font-weight:700;}
+  .step-num{background:var(--gold);color:var(--bg-deep);width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+  textarea{
+    width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:'Zen Maru Gothic',sans-serif;font-size:14px;
+    padding:11px;outline:none;transition:border-color 0.3s;resize:none;height:64px;
+  }
+  textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,106,0.12);}
+  textarea::placeholder{color:#6b7399;}
+
+  /* カード（縦長：星読み猫カード 687:1024） */
+  .card-area{display:flex;flex-direction:column;gap:14px;margin-bottom:16px;}
+  .card-row{display:flex;gap:12px;}
+  .card-wrap{flex:1;}
+  .card-position{font-size:12px;color:var(--gold);font-weight:700;letter-spacing:0.06em;margin-bottom:6px;padding-left:2px;display:flex;align-items:center;gap:6px;}
+  .card-position .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+
+  .card-slot{
+    width:100%;aspect-ratio:687/1024;
+    background:linear-gradient(160deg, var(--card-bg) 0%, var(--bg-deep) 100%);
+    border-radius:14px;
+    cursor:pointer;transition:transform 0.25s, box-shadow 0.25s;
+    overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 16px var(--shadow);
+    border:2px solid var(--gold-deep);
+  }
+  .card-slot::before{
+    content:'';position:absolute;inset:6px;
+    border:1px solid rgba(212,175,106,0.35);
+    border-radius:9px;
+    pointer-events:none;
+  }
+  .card-slot:hover:not(.revealed){transform:translateY(-3px);box-shadow:0 8px 22px var(--shadow);}
+  .card-slot.revealed{cursor:default;border-color:var(--line);}
+  .card-back-mark{font-family:'Shippori Mincho',serif;font-size:12.5px;color:var(--star);text-align:center;letter-spacing:0.15em;opacity:0.92;padding:0 6px;}
+  .card-back-mark .moon{font-size:32px;display:block;margin-bottom:8px;letter-spacing:0;}
+  .card-img{width:100%;height:100%;object-fit:cover;display:block;}
+  .card-name-overlay{
+    position:absolute;bottom:0;left:0;right:0;
+    background:linear-gradient(transparent, rgba(7,12,34,0.85));
+    padding:18px 8px 8px;
+    font-family:'Shippori Mincho',serif;
+    font-size:13px;color:var(--star);text-align:center;letter-spacing:0.08em;
+  }
+  @keyframes flipIn{0%{transform:rotateY(90deg) scale(0.85);opacity:0;}100%{transform:rotateY(0) scale(1);opacity:1;}}
+  .just-revealed{animation:flipIn 0.5s ease-out forwards;}
+
+  .btn{width:100%;padding:14px;border-radius:12px;font-family:'Zen Maru Gothic',sans-serif;font-size:14.5px;font-weight:700;cursor:pointer;letter-spacing:0.06em;transition:all 0.3s;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-ai{background:linear-gradient(135deg,#d4af6a,#b58f45);border:none;color:var(--bg-deep);font-size:15px;box-shadow:0 3px 12px rgba(181,143,69,0.35);}
+  .btn-ai:hover:not(:disabled){box-shadow:0 5px 20px rgba(181,143,69,0.45);transform:translateY(-2px);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;transform:none !important;}
+  .btn-reset{background:transparent;border:1px solid var(--line);color:var(--ink-soft);font-size:13px;}
+  .btn-reset:hover{border-color:var(--gold);color:var(--gold);}
+
+  .ai-result{
+    background:var(--card-bg);border:1px solid var(--gold-deep);border-radius:16px;
+    padding:22px;margin-top:4px;box-shadow:0 4px 20px var(--shadow);display:none;
+    position:relative;
+  }
+  .ai-result.show{display:block;}
+  .ai-result-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--line);}
+  .ai-result-header span{font-size:22px;}
+  .ai-result-header h3{font-family:'Shippori Mincho',serif;font-size:16px;color:var(--gold);letter-spacing:0.08em;}
+  .ai-reading{font-size:14.5px;line-height:2;color:var(--ink);}
+  .blessing{margin-top:14px;padding:14px 16px;background:rgba(212,175,106,0.08);border-radius:10px;border-left:3px solid var(--gold);}
+  .blessing h4{color:var(--gold);font-size:12px;margin-bottom:6px;letter-spacing:0.05em;}
+  .loading{text-align:center;padding:30px 10px;color:var(--ink-soft);font-size:13.5px;}
+  .loading-mark{font-size:26px;display:block;margin-bottom:10px;animation:twinkle 1.4s ease-in-out infinite;}
+  @keyframes twinkle{0%,100%{opacity:0.4;transform:scale(0.92);}50%{opacity:1;transform:scale(1.05);}}
+  .error-msg{background:rgba(212,110,90,0.1);border:1px solid rgba(212,110,90,0.4);border-radius:10px;padding:11px 14px;color:#e7a89a;font-size:13px;margin-top:8px;display:none;}
+  .error-msg.show{display:block;}
+
+  footer{text-align:center;margin-top:26px;font-size:11px;color:var(--ink-soft);letter-spacing:0.1em;opacity:0.7;}
+
+  @media (max-width:380px){
+    .card-row{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <span class="star-icon">🔮</span>
+    <h1>星読み猫オラクル</h1>
+    <p class="tagline">星々が語る、今のあなたへのメッセージ</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-mode="one" onclick="switchMode('one')">一枚引き</div>
+    <div class="tab" data-mode="three" onclick="switchMode('three')">三枚引き</div>
+  </div>
+
+  <div class="step">
+    <div class="step-label"><span class="step-num">1</span>今、心にあることを教えてください</div>
+    <textarea id="questionInput" placeholder="例：最近の自分の調子について知りたい…（省略可）"></textarea>
+  </div>
+
+  <!-- 一枚引き -->
+  <div class="panel active" id="panel-one">
+    <div class="kanji-divider"><span class="ln"></span><span>今のあなたへ 一枚のお告げ</span><span class="ln"></span></div>
+    <div class="card-area">
+      <div class="card-wrap">
+        <div class="card-slot" id="slot-0" onclick="revealCard(0)">
+          <div class="card-back-mark"><span class="moon">🌙</span>タップして<br>めくる</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-ai" id="btnAI-one" onclick="getAIReading('one')" disabled>✨ 星読み猫に伺う</button>
+    <div class="error-msg" id="errorMsg-one"></div>
+    <div class="ai-result" id="aiResult-one">
+      <div class="ai-result-header"><span>🐾</span><h3>星読み猫のお告げ</h3></div>
+      <div class="ai-reading" id="aiReading-one"></div>
+    </div>
+    <button class="btn btn-reset" onclick="resetMode('one')">🔄 最初からやり直す</button>
+  </div>
+
+  <!-- 三枚引き -->
+  <div class="panel" id="panel-three">
+    <div class="kanji-divider"><span class="ln"></span><span>星の巡り 三枚のお告げ</span><span class="ln"></span></div>
+    <div class="card-area">
+      <div class="card-row">
+        <div class="card-wrap">
+          <div class="card-position"><span class="dot"></span>今のあなた</div>
+          <div class="card-slot" id="slot-1" onclick="revealCard(1)">
+            <div class="card-back-mark"><span class="moon">🌙</span>タップして<br>めくる</div>
+          </div>
+        </div>
+        <div class="card-wrap">
+          <div class="card-position"><span class="dot"></span>手放していいもの</div>
+          <div class="card-slot" id="slot-2" onclick="revealCard(2)">
+            <div class="card-back-mark"><span class="moon">🌙</span>タップして<br>めくる</div>
+          </div>
+        </div>
+        <div class="card-wrap">
+          <div class="card-position"><span class="dot"></span>これから続く道</div>
+          <div class="card-slot" id="slot-3" onclick="revealCard(3)">
+            <div class="card-back-mark"><span class="moon">🌙</span>タップして<br>めくる</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-ai" id="btnAI-three" onclick="getAIReading('three')" disabled>✨ 星読み猫に伺う</button>
+    <div class="error-msg" id="errorMsg-three"></div>
+    <div class="ai-result" id="aiResult-three">
+      <div class="ai-result-header"><span>🐾</span><h3>星読み猫のお告げ</h3></div>
+      <div class="ai-reading" id="aiReading-three"></div>
+    </div>
+    <button class="btn btn-reset" onclick="resetMode('three')">🔄 最初からやり直す</button>
+  </div>
+
+  <footer>星読み猫オラクルカードシリーズ</footer>
+</div>
+
+<script>
+// ===== カードデータ =====
+const CARDS = [
+  // 天体(10)
+  {slug:'01_sun', name:'太陽', message:'本来の自分・生命力・自己表現。あなたらしく輝くとき。'},
+  {slug:'02_moon', name:'月', message:'感情・直感。心の奥にある本音に、そっと耳を澄ませるとき。'},
+  {slug:'03_mercury', name:'水星', message:'言葉・知性・コミュニケーション。伝えることで道が開ける。'},
+  {slug:'04_venus', name:'金星', message:'愛・美・調和。心地よいものを、素直に大切にするとき。'},
+  {slug:'05_mars', name:'火星', message:'情熱・行動力。迷いを断ち切り、一歩踏み出す勇気。'},
+  {slug:'06_jupiter', name:'木星', message:'拡大・幸運・寛容さ。視野を広げれば、道はもっと開ける。'},
+  {slug:'07_saturn', name:'土星', message:'忍耐・責任・積み重ね。地に足をつけて進むとき。'},
+  {slug:'08_uranus', name:'天王星', message:'変化・自由・独創性。型を破ることを恐れなくていい。'},
+  {slug:'09_neptune', name:'海王星', message:'直感・夢・見えないつながり。心のままに感じてみて。'},
+  {slug:'10_pluto', name:'冥王星', message:'再生・変容。手放すことで、新しい自分が生まれる。'},
+  // 星座(12)
+  {slug:'11_aries', name:'牡羊座', message:'情熱と勢い。新しい一歩を踏み出す力が満ちている。'},
+  {slug:'12_taurus', name:'牡牛座', message:'安定と豊かさ。地道な積み重ねが、確かな実りになる。'},
+  {slug:'13_gemini', name:'双子座', message:'好奇心と対話。ひとつの視点にとらわれなくていい。'},
+  {slug:'14_cancer', name:'蟹座', message:'絆と安心感。心を守り、優しく育んでいくとき。'},
+  {slug:'15_leo', name:'獅子座', message:'自己表現と輝き。堂々と、あなたらしくいていい。'},
+  {slug:'16_virgo', name:'乙女座', message:'丁寧さと分析力。小さな気配りが、大きな信頼になる。'},
+  {slug:'17_libra', name:'天秤座', message:'調和とバランス。人との関係性に、心を配るとき。'},
+  {slug:'18_scorpio', name:'蠍座', message:'深い絆と変容の力。本質を見抜く目を持つこと。'},
+  {slug:'19_sagittarius', name:'射手座', message:'冒険と自由。視界を遠くまで広げてみて。'},
+  {slug:'20_capricorn', name:'山羊座', message:'忍耐と意志の力。頂を目指す歩みは、必ず実を結ぶ。'},
+  {slug:'21_aquarius', name:'水瓶座', message:'独創性と自由な発想。仲間とのつながりが力になる。'},
+  {slug:'22_pisces', name:'魚座', message:'共感力と直感。夢見る心を、大切にしていいとき。'}
+];
+const IMG_BASE = '/images/';
+
+let currentMode = 'one';
+let drawnCards = {}; // slotIndex -> card
+
+function shuffleDraw(n){
+  const shuffled = [...CARDS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+
+function switchMode(mode){
+  currentMode = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  document.getElementById('panel-one').classList.toggle('active', mode === 'one');
+  document.getElementById('panel-three').classList.toggle('active', mode === 'three');
+}
+
+function ensureDrawn(mode){
+  if (mode === 'one' && !drawnCards[0]){
+    drawnCards[0] = shuffleDraw(1)[0];
+  }
+  if (mode === 'three' && !(drawnCards[1] && drawnCards[2] && drawnCards[3])){
+    const [a,b,c] = shuffleDraw(3);
+    drawnCards[1] = a; drawnCards[2] = b; drawnCards[3] = c;
+  }
+}
+ensureDrawn('one');
+
+function revealCard(slotIndex){
+  const mode = slotIndex === 0 ? 'one' : 'three';
+  ensureDrawn(mode);
+  const slot = document.getElementById('slot-' + slotIndex);
+  if (slot.classList.contains('revealed')) return;
+  const card = drawnCards[slotIndex];
+  slot.classList.add('revealed', 'just-revealed');
+  setTimeout(() => slot.classList.remove('just-revealed'), 500);
+  const nameEscaped = card.name.replace(/'/g, "\\'");
+  slot.innerHTML = `
+    <img class="card-img" src="${IMG_BASE}${card.slug}.jpg" alt="${card.name}"
+      onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:30px;flex-direction:column;gap:8px;color:#f5eccb\\'><span>🐾</span><span style=\\'font-size:13px;text-align:center;padding:0 8px\\'>${nameEscaped}</span></div>'">
+    <div class="card-name-overlay">${card.name}</div>
+  `;
+  checkReadyForMode(mode);
+}
+
+function checkReadyForMode(mode){
+  if (mode === 'one'){
+    const ready = document.getElementById('slot-0').classList.contains('revealed');
+    document.getElementById('btnAI-one').disabled = !ready;
+  } else {
+    const ready = [1,2,3].every(i => document.getElementById('slot-' + i).classList.contains('revealed'));
+    document.getElementById('btnAI-three').disabled = !ready;
+  }
+}
+
+const SYSTEM_PERSONA = `あなたは「星読み猫」。星模様の紺色のローブをまとい、夜空の下で静かに星々を読み解いてきた、ミステリアスで落ち着いた雰囲気の猫の占い師です。断定的すぎず、詩的で余韻のある語り口で話してください。時折「……」を使い、静かに間を置くように語りかけてください。温かく、でも的確なアドバイスをしてください。**のようなマークダウン記号や見出し記号は一切使わず、普通の文章だけで書いてください。`;
+
+async function callReading(prompt){
+  const res = await fetch('/api/reading', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 900,
+      messages: [{role: 'user', content: prompt}]
+    })
+  });
+  const data = await res.json();
+  let text = data.content?.[0]?.text || '';
+  if (!text) throw new Error(data.error?.message || '解釈を取得できませんでした');
+  // 万一Markdown記号が混ざっていた場合の保険
+  text = text.replace(/\*\*/g, '').replace(/^#+\s*/gm, '');
+  return text;
+}
+
+async function getAIReading(mode){
+  const question = document.getElementById('questionInput').value.trim();
+  const btnAI = document.getElementById('btnAI-' + mode);
+  const aiResult = document.getElementById('aiResult-' + mode);
+  const aiReading = document.getElementById('aiReading-' + mode);
+  const errorMsg = document.getElementById('errorMsg-' + mode);
+  errorMsg.classList.remove('show');
+  btnAI.disabled = true;
+  aiResult.classList.add('show');
+  aiReading.innerHTML = `<div class="loading"><span class="loading-mark">✨</span>星読み猫が星々に耳を澄ませています……</div>`;
+
+  let prompt;
+  if (mode === 'one'){
+    const card = drawnCards[0];
+    prompt = `${SYSTEM_PERSONA}
+
+【ご質問・今の気持ち】
+${question || '（入力なし：今のあなたへのメッセージをお願いします）'}
+
+【引いたカード】
+「${card.name}」— ${card.message}
+
+このカードが今のあなたに伝えたいメッセージを、200〜250文字程度で温かく具体的に伝えてください。最後に「星読み猫からひとこと」として、短い一言の言葉を添えてください。`;
+  } else {
+    const c1 = drawnCards[1], c2 = drawnCards[2], c3 = drawnCards[3];
+    prompt = `${SYSTEM_PERSONA}
+
+【ご質問・今の気持ち】
+${question || '（入力なし：今のあなたへのメッセージをお願いします）'}
+
+【引いた三枚】
+1. 今のあなた:「${c1.name}」— ${c1.message}
+2. 手放していいもの:「${c2.name}」— ${c2.message}
+3. これから続く道:「${c3.name}」— ${c3.message}
+
+この三枚のつながりを、一つの流れのある物語として400〜500文字程度で温かく読み解いてください。それぞれのカードの位置（今／手放すもの／これから）を踏まえて具体的に伝えてください。最後に「星読み猫からひとこと」として、短い一言の言葉を添えてください。`;
+  }
+
+  try{
+    const text = await callReading(prompt);
+    const parts = text.split('星読み猫からひとこと');
+    const main = parts[0].trim();
+    const blessing = parts[1]?.trim().replace(/^[：:]\s*/, '') || '';
+    aiReading.innerHTML = `<p>${main.replace(/\n/g, '<br>')}</p>${blessing ? `<div class="blessing"><h4>✨ 星読み猫からひとこと</h4><p>${blessing}</p></div>` : ''}`;
+  }catch(err){
+    aiResult.classList.remove('show');
+    errorMsg.textContent = `エラーが発生しました……: ${err.message}`;
+    errorMsg.classList.add('show');
+  }
+  btnAI.disabled = false;
+}
+
+function resetMode(mode){
+  document.getElementById('questionInput').value = '';
+  document.getElementById('aiResult-' + mode).classList.remove('show');
+  document.getElementById('errorMsg-' + mode).classList.remove('show');
+
+  if (mode === 'one'){
+    drawnCards[0] = null;
+    const slot = document.getElementById('slot-0');
+    slot.className = 'card-slot';
+    slot.innerHTML = `<div class="card-back-mark"><span class="moon">🌙</span>タップして<br>めくる</div>`;
+    document.getElementById('btnAI-one').disabled = true;
+  } else {
+    [1,2,3].forEach(i => {
+      drawnCards[i] = null;
+      const slot = document.getElementById('slot-' + i);
+      slot.className = 'card-slot';
+      slot.innerHTML = `<div class="card-back-mark"><span class="moon">🌙</span>タップして<br>めくる</div>`;
+    });
+    document.getElementById('btnAI-three').disabled = true;
+  }
+  ensureDrawn(mode);
+}
+</script>
+</body>
+</html>
